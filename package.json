@@ -1,7 +1,7 @@
 {
-  "name": "pld-cli-send",
+  "name": "pld-cli",
   "version": "1.0.0",
-  "description": "Beautiful CLI tool for uploading and sharing files instantly via Pixeldrain",
+  "description": "CLI tool for uploading and sharing files",
   "main": "index.js",
   "bin": {
     "pld": "./index.js"

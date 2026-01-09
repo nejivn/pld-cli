@@ -840,12 +840,12 @@ if (options.config) {
 } else {
   // Show tool information
   console.log('\n');
-  console.log(chalk.cyan.bold('  ██████╗ ██╗     ██████╗      ██████╗██╗     ██╗'));
-  console.log(chalk.cyan.bold('  ██╔══██╗██║     ██╔══██╗    ██╔════╝██║     ██║'));
-  console.log(chalk.cyan.bold('  ██████╔╝██║     ██║  ██║    ██║     ██║     ██║'));
-  console.log(chalk.cyan.bold('  ██╔═══╝ ██║     ██║  ██║    ██║     ██║     ██║'));
-  console.log(chalk.cyan.bold('  ██║     ███████╗██████╔╝    ╚██████╗███████╗██║'));
-  console.log(chalk.cyan.bold('  ╚═╝     ╚══════╝╚═════╝      ╚═════╝╚══════╝╚═╝'));
+  console.log(chalk.cyan('  ██████╗ ██╗     ██████╗      ██████╗██╗     ██╗'));
+  console.log(chalk.cyan('  ██╔══██╗██║     ██╔══██╗    ██╔════╝██║     ██║'));
+  console.log(chalk.cyan('  ██████╔╝██║     ██║  ██║    ██║     ██║     ██║'));
+  console.log(chalk.cyan('  ██╔═══╝ ██║     ██║  ██║    ██║     ██║     ██║'));
+  console.log(chalk.cyan('  ██║     ███████╗██████╔╝    ╚██████╗███████╗██║'));
+  console.log(chalk.cyan('  ╚═╝     ╚══════╝╚═════╝      ╚═════╝╚══════╝╚═╝'));
   console.log('\n');
   console.log(chalk.white('  Version: ') + chalk.green('1.0.0'));
   console.log(chalk.white('  Author: ') + chalk.yellow('laiduc1312'));

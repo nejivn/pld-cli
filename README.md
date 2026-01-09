@@ -1,86 +1,114 @@
-# 📤 Pixeldrain CLI Tool
+# 📤 PLD CLI - File Sharing Tool
 
-A beautiful and professional command-line tool for uploading and sharing files instantly using Pixeldrain. Features a gorgeous terminal UI with colors, loading animations, automatic clipboard integration, upload history tracking, and secure API key management.
+A beautiful and professional command-line tool for uploading and sharing files instantly using Pixeldrain and Gofile. Features a gorgeous terminal UI with colors, loading animations, automatic clipboard integration, upload history tracking, and secure API key management.
 
 ## ✨ Features
 
-- 🚀 **Fast uploads** with streaming support for large files
-- 🎨 **Beautiful terminal UI** with colors and animations
-- 📋 **Automatic clipboard** - download link copied instantly
-- 📊 **Progress tracking** - see upload percentage in real-time
-- 🔐 **Secure API key management** - stored locally in `~/.pld/`
-- 📜 **Upload history** - track all your uploads
-- 💾 **Memory efficient** - handles large files without issues
-- 🛠️ **Professional CLI** - full command-line interface with Commander.js
+- 🚀 **Lightning Fast** - Upload files instantly with streaming support for large files
+- 🎨 **Beautiful Terminal UI** - Gorgeous interface with colors, animations, and smooth progress indicators
+- 📋 **Auto Clipboard** - Download links automatically copied to your clipboard
+- 📊 **Upload History** - Track all your uploads with timestamps and file info
+- 🔐 **Secure & Private** - API keys stored locally and encrypted. All uploads use HTTPS
+- 💾 **Memory Efficient** - Handles files of any size without consuming excessive memory
+- 🔄 **Dual Service Support** - Choose between Gofile and Pixeldrain for uploads
+- 💻 **Open Source** - Free and open-source software on GitHub
 
 ## 📦 Installation
 
-### Step 1: Install Dependencies
+### Scoop (Recommended)
 
-```bash
-npm install
+The easiest way to install PLD CLI on Windows is via Scoop package manager.
+
+**If you don't have Scoop installed:**
+
+1. Set execution policy (run in PowerShell):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### Step 2: Link as Global Command
+2. Install Scoop:
+```powershell
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+```
+
+**Then install PLD CLI:**
+```powershell
+scoop install pld-cli
+```
+
+### Manual Installation
+
+Clone from GitHub and install dependencies:
 
 ```bash
+git clone https://github.com/laiduc1312209/pld-cli.git
+cd pld-cli
+npm install
 npm link
 ```
 
-This makes the `pld` command available globally on your system.
+## 🚀 Quick Start
 
-### Step 3: Configure API Key
+### Step 1: Configure API Key
 
-Get your free API key from Pixeldrain:
-
-1. Create a free account at [Pixeldrain](https://pixeldrain.com)
-2. Get your API key from [API Keys page](https://pixeldrain.com/user/api_keys)
-3. Run the config command:
-
+Run the configuration wizard:
 ```bash
-pld -config
+pld --config
 ```
 
-4. Enter your API key when prompted
+You'll be prompted to enter your API key for either:
+- **Gofile** - Get your API key at [Gofile API](https://gofile.io/api)
+- **Pixeldrain** - Get your API key at [Pixeldrain API Keys](https://pixeldrain.com/user/api_keys)
 
 Your API key will be securely stored in `~/.pld/config.json`
 
-## 🚀 Usage
+### Step 2: Upload Files
+
+Upload a file to Gofile (default):
+```bash
+pld -s document.pdf
+```
+
+Upload a file to Pixeldrain:
+```bash
+pld -s photo.jpg pd
+```
+
+## 📖 Usage
 
 ### Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `pld -config` | Configure your Pixeldrain API key |
-| `pld -s <file>` | Upload a file to Pixeldrain |
-| `pld -h` | Show upload history (last 10 uploads) |
+| `pld --config` | Configure your Gofile or Pixeldrain API key |
+| `pld -s <file>` | Upload a file to Gofile (default) |
+| `pld -s <file> pd` | Upload a file to Pixeldrain |
+| `pld --list` | Show upload history (last 10 uploads) |
 | `pld --help` | Display help and all available commands |
 
 ### Examples
 
-#### Configure API Key (First time setup)
+#### Configure API Key
 ```bash
-pld -config
+pld --config
 ```
 
-#### Upload a file
+#### Upload to Gofile (default)
 ```bash
 pld -s document.pdf
-```
-
-#### Upload from any directory
-```bash
+pld -s large-video.mp4
 pld -s C:\Users\Documents\image.png
 ```
 
-#### Upload large files (with progress bar)
+#### Upload to Pixeldrain
 ```bash
-pld -s large-video.mp4
+pld -s document.pdf pd
+pld -s photo.jpg pd
 ```
 
-#### View upload history
+#### View Upload History
 ```bash
-pld -h
+pld --list
 ```
 
 ### Output Example
@@ -88,21 +116,22 @@ pld -h
 After a successful upload, you'll see:
 
 ```
-┌─────────────────────────────────────┐
-│   📤 Pixeldrain CLI Tool 📤        │
-└─────────────────────────────────────┘
+╔═══════════════════════════════════════╗
+║       📤 PLD CLI - File Upload 📤     ║
+╚═══════════════════════════════════════╝
 
 📁 File: document.pdf
 📊 Size: 2.5 MB
+🌐 Service: Gofile
 
 ✔ Upload complete! ✨
 
-┌─────────────────────────────────────┐
-│         Upload Successful! 🎉       │
-└─────────────────────────────────────┘
+╔═══════════════════════════════════════╗
+║         Upload Successful! 🎉         ║
+╚═══════════════════════════════════════╝
 
 🔗 Download Link:
-   https://pixeldrain.com/u/abc123xyz
+   https://gofile.io/d/abc123xyz
 
 ✓ Link copied to clipboard!
 ```
@@ -128,9 +157,10 @@ The tool creates a `.pld` directory in your home folder to store configuration a
 - **clipboardy** - Cross-platform clipboard access
 - **commander** - Command-line interface framework
 
-### API
+### Supported Services
 
-This tool uses the [Pixeldrain API](https://pixeldrain.com/api) for file uploads. All uploads are authenticated using your API key via HTTP Basic Authentication.
+- **Gofile** - Fast and reliable file sharing service
+- **Pixeldrain** - Privacy-focused file hosting
 
 ### Security
 
@@ -147,10 +177,10 @@ The tool automatically tracks your uploads and stores:
 - Timestamp of upload
 - Filename
 - File size
-- File ID
+- Service used (Gofile/Pixeldrain)
 - Download link
 
-View your history anytime with `pld -h`
+View your history anytime with `pld --list`
 
 ### Progress Tracking
 
@@ -165,8 +195,16 @@ Every successful upload automatically copies the download link to your clipboard
 
 ## 🐛 Troubleshooting
 
-### Command not found after `npm link`
+### Command not found after installation
 
+**For Scoop users:**
+Try reinstalling:
+```bash
+scoop uninstall pld-cli
+scoop install pld-cli
+```
+
+**For manual installation:**
 Try running:
 ```bash
 npm unlink
@@ -179,13 +217,13 @@ Or restart your terminal.
 
 Your API key is invalid or expired. Reconfigure it:
 ```bash
-pld -config
+pld --config
 ```
 
 ### Network errors
 
 - Check your internet connection
-- Verify Pixeldrain is accessible: https://pixeldrain.com
+- Verify the service is accessible (Gofile/Pixeldrain)
 - Check if you're behind a proxy or firewall
 
 ### File not found
@@ -199,17 +237,24 @@ pld -config
 Future features planned:
 - [ ] Multiple file upload support
 - [ ] Custom expiry time for uploads
-- [ ] Download files from Pixeldrain
+- [ ] Download files from services
 - [ ] File encryption before upload
 - [ ] Upload to custom folders/collections
 - [ ] Export history to CSV
+- [ ] Support for more file sharing services
 
 ## 📄 License
 
 MIT
 
+## 🔗 Links
+
+- **GitHub**: [github.com/laiduc1312209/pld-cli](https://github.com/laiduc1312209/pld-cli)
+- **Gofile**: [gofile.io](https://gofile.io)
+- **Pixeldrain**: [pixeldrain.com](https://pixeldrain.com)
+
 ---
 
 Made with ❤️ for easy file sharing
 
-**Get Started:** `pld -config`
+**Get Started:** `pld --config`

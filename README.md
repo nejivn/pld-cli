@@ -1,6 +1,6 @@
 # 📤 PLD CLI - File Sharing Tool
 
-A beautiful and professional command-line tool for uploading and sharing files instantly using Pixeldrain and Gofile. Features a gorgeous terminal UI with colors, loading animations, automatic clipboard integration, upload history tracking, and secure API key management.
+A beautiful and professional command-line tool for uploading and sharing files instantly using Pixeldrain, Gofile, and Google Drive. Features a gorgeous terminal UI with colors, loading animations, automatic clipboard integration, upload history tracking, and secure API key management.
 
 ## ✨ Features
 
@@ -10,7 +10,7 @@ A beautiful and professional command-line tool for uploading and sharing files i
 - 📊 **Upload History** - Track all your uploads with timestamps and file info
 - 🔐 **Secure & Private** - API keys stored locally and encrypted. All uploads use HTTPS
 - 💾 **Memory Efficient** - Handles files of any size without consuming excessive memory
-- 🔄 **Dual Service Support** - Choose between Gofile and Pixeldrain for uploads
+- 🔄 **Multi Service Support** - Choose between Gofile, Pixeldrain, and Google Drive for uploads
 - 💻 **Open Source** - Free and open-source software on GitHub
 
 ## 📦 Installation
@@ -57,11 +57,12 @@ Run the configuration wizard:
 pld --config
 ```
 
-You'll be prompted to enter your API key for either:
-- **Gofile** - Get your API key at [Gofile API](https://gofile.io/api)
+You'll be prompted to select a service and enter your credentials:
+- **Gofile** - Get your API key at [Gofile API](https://gofile.io/api) (optional, can upload anonymously)
 - **Pixeldrain** - Get your API key at [Pixeldrain API Keys](https://pixeldrain.com/user/api_keys)
+- **Google Drive** - Requires OAuth setup (see [Google Drive Setup](#-google-drive-setup) below)
 
-Your API key will be securely stored in `~/.pld/config.json`
+Your credentials will be securely stored in `~/.pld/config.json`
 
 ### Step 2: Upload Files
 
@@ -75,17 +76,24 @@ Upload a file to Pixeldrain:
 pld -s photo.jpg pd
 ```
 
+Upload a file to Google Drive:
+```bash
+pld -s video.mp4 gd
+```
+
 ## 📖 Usage
 
 ### Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `pld --config` | Configure your Gofile or Pixeldrain API key |
+| `pld --config` | Configure your API keys and credentials |
 | `pld -s <file>` | Upload a file to Gofile (default) |
+| `pld -s <file> gf` | Upload a file to Gofile |
 | `pld -s <file> pd` | Upload a file to Pixeldrain |
-| `pld --list` | Show upload history (last 10 uploads) |
-| `pld --help` | Display help and all available commands |
+| `pld -s <file> gd` | Upload a file to Google Drive |
+| `pld -ls` | Show upload history (last 10 uploads) |
+| `pld -h` | Display help and all available commands |
 
 ### Examples
 
@@ -107,9 +115,59 @@ pld -s document.pdf pd
 pld -s photo.jpg pd
 ```
 
+#### Upload to Google Drive
+```bash
+pld -s document.pdf gd
+pld -s video.mp4 gd
+```
+
 #### View Upload History
 ```bash
-pld --list
+pld -ls
+```
+
+## 🔷 Google Drive Setup
+
+To use Google Drive, you need to create OAuth 2.0 credentials:
+
+### Step 1: Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the **Google Drive API** for your project
+
+### Step 2: Create OAuth 2.0 Credentials
+
+1. Go to **APIs & Services** > **Credentials**
+2. Click **+ CREATE CREDENTIALS** > **OAuth client ID**
+3. Select **Web application** as the application type
+4. Add `http://localhost:3000/callback` to **Authorized redirect URIs**
+5. Click **Create** and save your **Client ID** and **Client Secret**
+
+### Step 3: Configure PLD CLI
+
+```bash
+pld --config
+```
+
+1. Select **Google Drive** (option 3)
+2. Enter your **Client ID**
+3. Enter your **Client Secret**
+4. A browser window will open for you to authorize the application
+5. Log in with your Google account and grant permissions
+
+After authorization, you can upload files to Google Drive using:
+```bash
+pld -s <file> gd
+```
+
+## 📡 Supported Services
+
+| Service | Flag | API Key Required | Notes |
+|---------|------|------------------|-------|
+| Gofile | `gf` | Optional | Default service, anonymous uploads allowed |
+| Pixeldrain | `pd` | Required | Free tier: 10GB limit, limited upload speed |
+| Google Drive | `gd` | OAuth Required | 15GB free storage |
 
 ## 🗂️ File Structure
 
@@ -117,7 +175,7 @@ The tool creates a `.pld` directory in your home folder to store configuration a
 
 ```
 ~/.pld/
-├── config.json    # Your API key (keep this secure!)
+├── config.json    # Your API keys and credentials (keep this secure!)
 └── history.json   # Upload history (last 50 uploads)
 ```
 
@@ -131,18 +189,16 @@ The tool creates a `.pld` directory in your home folder to store configuration a
 - **ora** - Elegant terminal spinner
 - **clipboardy** - Cross-platform clipboard access
 - **commander** - Command-line interface framework
-
-### Supported Services
-
-- **Gofile** - Fast and reliable file sharing service
-- **Pixeldrain** - Privacy-focused file hosting
+- **googleapis** - Google APIs client library
+- **open** - Open URLs in the default browser
 
 ### Security
 
-- Your API key is stored locally in `~/.pld/config.json`
+- Your API keys and tokens are stored locally in `~/.pld/config.json`
 - Never share your config file with others
 - The API key is never logged or displayed
 - All uploads are encrypted in transit (HTTPS)
+- Google Drive uses OAuth 2.0 with refresh tokens
 
 ## 📝 Features in Detail
 
@@ -152,16 +208,16 @@ The tool automatically tracks your uploads and stores:
 - Timestamp of upload
 - Filename
 - File size
-- Service used (Gofile/Pixeldrain)
+- Service used (Gofile/Pixeldrain/Google Drive)
 - Download link
 
-View your history anytime with `pld --list`
+View your history anytime with `pld -ls`
 
 ### Progress Tracking
 
 For large files, you'll see a real-time progress indicator:
 ```
-⠹ Uploading... 45%
+⠹ Uploading... 45% [2.5 MB/s] ETA: 30s
 ```
 
 ### Clipboard Integration
@@ -195,10 +251,17 @@ Your API key is invalid or expired. Reconfigure it:
 pld --config
 ```
 
+### Google Drive authorization issues
+
+If you encounter authorization errors:
+1. Run `pld --config` and select Google Drive
+2. Choose **Re-authorize** to get a new token
+3. Make sure you've added `http://localhost:3000/callback` as a redirect URI in Google Cloud Console
+
 ### Network errors
 
 - Check your internet connection
-- Verify the service is accessible (Gofile/Pixeldrain)
+- Verify the service is accessible (Gofile/Pixeldrain/Google)
 - Check if you're behind a proxy or firewall
 
 ### File not found
@@ -216,7 +279,7 @@ Future features planned:
 - [ ] File encryption before upload
 - [ ] Upload to custom folders/collections
 - [ ] Export history to CSV
-- [ ] Support for more file sharing services
+- [x] Support for more file sharing services (Google Drive)
 
 ## 📄 License
 
@@ -227,6 +290,7 @@ MIT
 - **GitHub**: [github.com/laiduc1312209/pld-cli](https://github.com/laiduc1312209/pld-cli)
 - **Gofile**: [gofile.io](https://gofile.io)
 - **Pixeldrain**: [pixeldrain.com](https://pixeldrain.com)
+- **Google Drive**: [drive.google.com](https://drive.google.com)
 
 ---
 

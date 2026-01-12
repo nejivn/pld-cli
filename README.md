@@ -16,7 +16,7 @@ A beautiful and professional command-line tool for uploading and sharing files i
 ## 📦 Installation
 
 
-### Scoop
+### Irm
 
 The easiest way to install PLD CLI on Windows.
 

@@ -1252,7 +1252,7 @@ async function uploadFile(filePath, serviceFlag) {
 
 // ==================== AUTO UPDATE ====================
 
-const CURRENT_VERSION = '1.0.1';
+const CURRENT_VERSION = '1.0.2';
 const GITHUB_REPO = 'laiduc1312209/pld-cli';
 const UPDATE_CHECK_FILE = path.join(CONFIG_DIR, '.update_check');
 

@@ -6,10 +6,20 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "📤 Installing PLD CLI..." -ForegroundColor Cyan
 
-# Configuration
-$version = "1.0.0"
+# Configuration - Fetch latest version from GitHub
+Write-Host "Fetching latest version..." -ForegroundColor Yellow
+try {
+    $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/laiduc1312209/pld-cli/releases/latest" -Headers @{ "User-Agent" = "pld-cli-installer" }
+    $version = $latestRelease.tag_name -replace '^v', ''
+    Write-Host "Latest version: v$version" -ForegroundColor Green
+}
+catch {
+    Write-Host "⚠️  Could not fetch latest version, using default..." -ForegroundColor Yellow
+    $version = "1.0.2"
+}
+
 $installDir = "$env:LOCALAPPDATA\pld-cli"
-$zipUrl = "https://github.com/laiduc1312209/pld-cli/archive/refs/tags/$version.zip"
+$zipUrl = "https://github.com/laiduc1312209/pld-cli/archive/refs/tags/v$version.zip"
 $tempZip = "$env:TEMP\pld-cli.zip"
 
 # Check Node.js

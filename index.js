@@ -12,6 +12,7 @@ const { Command } = require('commander');
 const readline = require('readline');
 const { google } = require('googleapis');
 const open = require('open');
+const qrcode = require('qrcode-terminal');
 
 const GOOGLE_DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 const GOOGLE_DRIVE_TOKEN_PATH = 'google_drive_token.json'; // Will be stored in config dir
@@ -848,6 +849,11 @@ async function uploadToPixeldrain(filePath, apiKey) {
     console.log(chalk.white('🔗 Download Link:'));
     console.log(chalk.cyan.underline.bold(`   ${downloadLink}\n`));
 
+    // Display QR Code
+    console.log(chalk.white('📱 QR Code:'));
+    qrcode.generate(downloadLink, { small: true });
+    console.log('');
+
     // Copy to clipboard
     try {
       await clipboardy.write(downloadLink);
@@ -1002,6 +1008,11 @@ async function uploadToGofile(filePath, token) {
     console.log(chalk.white('🔗 Download Link:'));
     console.log(chalk.cyan.underline.bold(`   ${downloadLink}\n`));
 
+    // Display QR Code
+    console.log(chalk.white('📱 QR Code:'));
+    qrcode.generate(downloadLink, { small: true });
+    console.log('');
+
     // Copy to clipboard
     try {
       await clipboardy.write(downloadLink);
@@ -1122,6 +1133,11 @@ async function uploadToGoogleDrive(filePath) {
 
     console.log(chalk.white('🔗 Share Link:'));
     console.log(chalk.cyan.underline.bold(`   ${downloadLink}\n`));
+
+    // Display QR Code
+    console.log(chalk.white('📱 QR Code:'));
+    qrcode.generate(downloadLink, { small: true });
+    console.log('');
 
     // Copy to clipboard
     try {

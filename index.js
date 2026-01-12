@@ -1250,6 +1250,108 @@ async function uploadFile(filePath, serviceFlag) {
   }
 }
 
+// ==================== AUTO UPDATE ====================
+
+const CURRENT_VERSION = '1.0.1';
+const GITHUB_REPO = 'laiduc1312209/pld-cli';
+const UPDATE_CHECK_FILE = path.join(CONFIG_DIR, '.update_check');
+
+async function checkForUpdates() {
+  try {
+    // Check if we should check for updates (once per day)
+    let shouldCheck = true;
+    if (fs.existsSync(UPDATE_CHECK_FILE)) {
+      const lastCheck = fs.readFileSync(UPDATE_CHECK_FILE, 'utf8');
+      const lastCheckTime = new Date(lastCheck);
+      const now = new Date();
+      const hoursSinceLastCheck = (now - lastCheckTime) / (1000 * 60 * 60);
+
+      // Only check once per 24 hours
+      if (hoursSinceLastCheck < 24) {
+        shouldCheck = false;
+      }
+    }
+
+    if (!shouldCheck) {
+      return;
+    }
+
+    // Fetch latest version from GitHub
+    const response = await axios.get(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      timeout: 3000,
+      headers: {
+        'User-Agent': 'pld-cli'
+      }
+    });
+
+    const latestVersion = response.data.tag_name.replace('v', '');
+
+    // Save last check time
+    fs.writeFileSync(UPDATE_CHECK_FILE, new Date().toISOString());
+
+    // Compare versions
+    if (latestVersion !== CURRENT_VERSION && isNewerVersion(latestVersion, CURRENT_VERSION)) {
+      console.log(chalk.yellow('\n🔔 New version available: ') + chalk.green(`v${latestVersion}`) + chalk.gray(` (current: v${CURRENT_VERSION})`));
+      console.log(chalk.white('🚀 Updating automatically...\n'));
+
+      // Auto-update via PowerShell irm script
+      await autoUpdate();
+    }
+  } catch (error) {
+    // Silent fail - don't interrupt user workflow
+  }
+}
+
+function isNewerVersion(latest, current) {
+  const latestParts = latest.split('.').map(Number);
+  const currentParts = current.split('.').map(Number);
+
+  for (let i = 0; i < 3; i++) {
+    if (latestParts[i] > currentParts[i]) return true;
+    if (latestParts[i] < currentParts[i]) return false;
+  }
+  return false;
+}
+
+async function autoUpdate() {
+  try {
+    const { spawn } = require('child_process');
+
+    console.log(chalk.cyan('⏳ Installing update...'));
+
+    // Run PowerShell irm script
+    const updateScript = `irm https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.ps1 | iex`;
+
+    const ps = spawn('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
+      '-Command', updateScript
+    ], {
+      stdio: 'inherit'
+    });
+
+    ps.on('close', (code) => {
+      if (code === 0) {
+        console.log(chalk.green('\n✓ Update completed successfully!\n'));
+        console.log(chalk.yellow('Please restart your terminal or run the command again.\n'));
+        process.exit(0);
+      } else {
+        console.log(chalk.yellow('\n⚠️  Auto-update failed. You can update manually:'));
+        console.log(chalk.cyan('   irm https://raw.githubusercontent.com/laiduc1312209/pld-cli/main/install.ps1 | iex\n'));
+      }
+    });
+
+    ps.on('error', (error) => {
+      console.log(chalk.yellow('\n⚠️  Auto-update failed. You can update manually:'));
+      console.log(chalk.cyan('   irm https://raw.githubusercontent.com/laiduc1312209/pld-cli/main/install.ps1 | iex\n'));
+    });
+
+  } catch (error) {
+    console.log(chalk.yellow('\n⚠️  Auto-update failed. You can update manually:'));
+    console.log(chalk.cyan('   irm https://raw.githubusercontent.com/laiduc1312209/pld-cli/main/install.ps1 | iex\n'));
+  }
+}
+
 // ==================== CLI SETUP ====================
 
 const program = new Command();
@@ -1267,6 +1369,11 @@ program
 program.parse(process.argv);
 
 const options = program.opts();
+
+// Check for updates (runs in background, once per day)
+checkForUpdates().catch(() => {
+  // Silent fail - don't interrupt user workflow
+});
 
 // Handle commands
 if (options.config) {
@@ -1287,7 +1394,7 @@ if (options.config) {
   console.log(chalk.cyan('  ██║     ███████╗██████╔╝    ╚██████╗███████╗██║'));
   console.log(chalk.cyan('  ╚═╝     ╚══════╝╚═════╝      ╚═════╝╚══════╝╚═╝'));
   console.log('\n');
-  console.log(chalk.white('  Version: ') + chalk.green('1.0.1'));
+  console.log(chalk.white('  Version: ') + chalk.green(`v${CURRENT_VERSION}`));
   console.log(chalk.white('  Author: ') + chalk.yellow('laiduc1312209'));
   console.log(chalk.white('  Contributor: ') + chalk.cyan('nejivn'));
   console.log('\n');

@@ -6,7 +6,9 @@ A beautiful and professional command-line tool for uploading and sharing files i
 
 - 🚀 **Lightning Fast** - Upload files instantly with streaming support for large files
 - 🎨 **Beautiful Terminal UI** - Gorgeous interface with colors, animations, and smooth progress indicators
+- 📱 **QR Code Display** - Automatic QR code generation for easy mobile sharing
 - 📋 **Auto Clipboard** - Download links automatically copied to your clipboard
+- 🔄 **Auto-Update** - Automatically checks and updates to the latest version
 - 📊 **Upload History** - Track all your uploads with timestamps and file info
 - 🔐 **Secure & Private** - API keys stored locally and encrypted. All uploads use HTTPS
 - 💾 **Memory Efficient** - Handles files of any size without consuming excessive memory
@@ -233,6 +235,34 @@ For large files, you'll see a real-time progress indicator:
 ### Clipboard Integration
 
 Every successful upload automatically copies the download link to your clipboard - just paste it anywhere!
+
+### QR Code Display
+
+After each successful upload, a QR code is automatically generated and displayed in the terminal:
+
+```
+🔗 Download Link:
+   https://pixeldrain.com/u/abc123
+
+📱 QR Code:
+█▀▀▀▀▀█ ▄ ▀▄▄ █▀▀▀▀▀█
+█ ███ █ ▀▀ ▄█ █ ███ █
+█ ▀▀▀ █ ▄▀█▄█ █ ▀▀▀ █
+
+✓ Link copied to clipboard!
+```
+
+Simply scan the QR code with your phone to instantly access the download link!
+
+### Auto-Update
+
+PLD CLI automatically checks for updates once per day when you run any command. If a new version is available, it will:
+
+1. Notify you about the new version
+2. Automatically download and install the update
+3. You just need to restart your terminal or run the command again
+
+No manual update needed - you'll always have the latest features and bug fixes!
 
 ## 🐛 Troubleshooting
 

@@ -15,9 +15,19 @@ A beautiful and professional command-line tool for uploading and sharing files i
 
 ## 📦 Installation
 
-### Scoop (Recommended)
 
-The easiest way to install PLD CLI on Windows is via Scoop package manager.
+### Scoop
+
+The easiest way to install PLD CLI on Windows.
+
+
+1. Run in PowerShell:
+```powershell
+irm https://raw.githubusercontent.com/laiduc1312209/pld-cli/main/install.ps1 | iex
+```
+### Scoop
+
+The way to install PLD CLI on Windows is via Scoop package manager.
 
 **If you don't have Scoop installed:**
 

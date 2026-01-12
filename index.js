@@ -10,6 +10,12 @@ const ora = require('ora');
 const clipboardy = require('clipboardy');
 const { Command } = require('commander');
 const readline = require('readline');
+const { google } = require('googleapis');
+const open = require('open');
+
+const GOOGLE_DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+const GOOGLE_DRIVE_TOKEN_PATH = 'google_drive_token.json'; // Will be stored in config dir
+
 
 // Constants
 const CONFIG_DIR = path.join(os.homedir(), '.pld');
@@ -58,46 +64,323 @@ function loadConfig() {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.log(chalk.yellow('⚠ Warning: Could not load config file'));
+    // Ignore errors, will return null
   }
   return null;
 }
 
-// Save config for a specific service
-function saveConfig(service, apiKey) {
+// Save config for a specific service or Google Drive
+function saveConfig(serviceType, credentials) {
   ensureConfigDir();
-  let config = loadConfig() || { services: {} };
+  let config = loadConfig() || {};
 
-  if (!config.services) {
-    config.services = {};
+  if (serviceType === 'googleDrive') {
+    config.googleDrive = {
+      ...credentials, // contains clientId, clientSecret, refreshToken
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    // For Pixeldrain/Gofile
+    if (!config.services) {
+      config.services = {};
+    }
+    config.services[serviceType] = {
+      apiKey: credentials.apiKey, // For backward compatibility, apiKey is used
+      updatedAt: new Date().toISOString()
+    };
   }
-
-  config.services[service] = {
-    apiKey: apiKey,
-    updatedAt: new Date().toISOString()
-  };
 
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
-// Get API key for a specific service
-function getServiceApiKey(service) {
+// Get API key or credentials for a specific service
+function getServiceCredentials(serviceType) {
   const config = loadConfig();
   if (!config) return null;
 
-  // Handle old config format (backward compatibility)
-  if (config.apiKey && !config.services && service === 'pixeldrain') {
-    // Migrate old format to new format
-    saveConfig('pixeldrain', config.apiKey);
-    return config.apiKey;
-  }
-
-  // Handle new format
-  if (config.services && config.services[service]) {
-    return config.services[service].apiKey;
+  if (serviceType === 'googleDrive') {
+    return config.googleDrive || null;
+  } else if (config.services && config.services[serviceType]) {
+    // Handle old config format (backward compatibility)
+    if (config.apiKey && !config.services && serviceType === 'pixeldrain') {
+      // Migrate old format to new format
+      saveConfig('pixeldrain', { apiKey: config.apiKey });
+      return { apiKey: config.apiKey };
+    }
+    // Handle new format
+    return config.services[serviceType];
   }
 
   return null;
+}
+
+
+// Create OAuth2 client
+function createOAuth2Client(clientId, clientSecret) {
+  return new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    'http://localhost:3000/callback'
+  );
+}
+
+// Get Google Drive OAuth2 client with valid credentials
+async function getGoogleDriveClient() {
+  const credentials = getServiceCredentials('googleDrive');
+
+  if (!credentials || !credentials.clientId || !credentials.clientSecret) {
+    return null;
+  }
+
+  const oauth2Client = createOAuth2Client(credentials.clientId, credentials.clientSecret);
+
+  if (credentials.refreshToken) {
+    oauth2Client.setCredentials({
+      refresh_token: credentials.refreshToken
+    });
+    return oauth2Client;
+  }
+
+  return null;
+}
+
+// Start local server to receive OAuth callback
+function startCallbackServer() {
+  return new Promise((resolve, reject) => {
+    const http = require('http');
+    const url = require('url');
+
+    const server = http.createServer((req, res) => {
+      const parsedUrl = url.parse(req.url, true);
+
+      if (parsedUrl.pathname === '/callback') {
+        const code = parsedUrl.query.code;
+        const error = parsedUrl.query.error;
+
+        if (error) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end('<html><body><h1>Authorization Failed</h1><p>You can close this window.</p></body></html>');
+          server.close();
+          reject(new Error(error));
+        } else if (code) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end('<html><body><h1>Authorization Successful!</h1><p>You can close this window and return to the terminal.</p></body></html>');
+          server.close();
+          resolve(code);
+        }
+      }
+    });
+
+    server.listen(3000, () => {
+      // Server started
+    });
+
+    server.on('error', (err) => {
+      reject(err);
+    });
+
+    // Timeout after 2 minutes
+    setTimeout(() => {
+      server.close();
+      reject(new Error('Authorization timeout'));
+    }, 120000);
+  });
+}
+
+// Authenticate with Google Drive (full OAuth flow)
+async function authenticateGoogleDrive(clientId, clientSecret) {
+  const oauth2Client = createOAuth2Client(clientId, clientSecret);
+
+  // Generate auth URL
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: GOOGLE_DRIVE_SCOPES,
+    prompt: 'consent' // Force to get refresh token
+  });
+
+  console.log(chalk.white('\n🔗 Opening browser for Google authorization...'));
+  console.log(chalk.gray('If browser does not open, visit this URL:\n'));
+  console.log(chalk.cyan.underline(authUrl) + '\n');
+
+  // Open browser
+  try {
+    await open(authUrl);
+  } catch (err) {
+    console.log(chalk.yellow('Could not open browser automatically.'));
+  }
+
+  // Start callback server and wait for authorization code
+  const spinner = ora(chalk.yellow('Waiting for authorization...')).start();
+
+  try {
+    const code = await startCallbackServer();
+    spinner.succeed(chalk.green('Authorization received!'));
+
+    // Exchange code for tokens
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (!tokens.refresh_token) {
+      throw new Error('No refresh token received. Please try again.');
+    }
+
+    return {
+      refreshToken: tokens.refresh_token,
+      accessToken: tokens.access_token
+    };
+  } catch (error) {
+    spinner.fail(chalk.red('Authorization failed!'));
+    throw error;
+  }
+}
+
+// Prompt for Google Drive Client ID
+function promptGoogleDriveClientId() {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    console.log(chalk.white('\n🔑 Please enter your Google OAuth Client ID:'));
+    console.log(chalk.gray('Get it from: ') + chalk.cyan.underline('https://console.cloud.google.com/apis/credentials\n'));
+
+    rl.question(chalk.yellow('Client ID: '), (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+// Prompt for Google Drive Client Secret
+function promptGoogleDriveClientSecret() {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    rl.question(chalk.yellow('Client Secret: '), (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+// Configure Google Drive
+async function configureGoogleDrive() {
+  const existingCredentials = getServiceCredentials('googleDrive');
+
+  if (existingCredentials && existingCredentials.refreshToken) {
+    // Already configured, show menu
+    while (true) {
+      console.log(chalk.white.bold('\n⚙️  Google Drive Configuration\n'));
+      console.log(chalk.cyan('1. ') + chalk.white('View current configuration'));
+      console.log(chalk.cyan('2. ') + chalk.white('Re-authorize (get new token)'));
+      console.log(chalk.cyan('3. ') + chalk.white('Delete configuration'));
+      console.log(chalk.cyan('4. ') + chalk.white('Exit\n'));
+
+      const choice = await new Promise((resolve) => {
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        rl.question(chalk.yellow('Select an option (1-4): '), (answer) => {
+          rl.close();
+          resolve(answer.trim());
+        });
+      });
+
+      switch (choice) {
+        case '1':
+          // View current config (masked)
+          const maskedClientId = existingCredentials.clientId.substring(0, 10) + '...';
+          const maskedSecret = existingCredentials.clientSecret.substring(0, 4) + '...';
+          console.log(chalk.white('\n📋 Current Configuration:'));
+          console.log(chalk.gray('  Client ID: ') + chalk.cyan(maskedClientId));
+          console.log(chalk.gray('  Client Secret: ') + chalk.cyan(maskedSecret));
+          console.log(chalk.gray('  Status: ') + chalk.green('Authorized'));
+          if (existingCredentials.updatedAt) {
+            console.log(chalk.gray('  Updated: ') + chalk.white(formatTimestamp(existingCredentials.updatedAt)));
+          }
+          console.log('');
+          break;
+
+        case '2':
+          // Re-authorize
+          try {
+            const tokens = await authenticateGoogleDrive(
+              existingCredentials.clientId,
+              existingCredentials.clientSecret
+            );
+            saveConfig('googleDrive', {
+              clientId: existingCredentials.clientId,
+              clientSecret: existingCredentials.clientSecret,
+              refreshToken: tokens.refreshToken
+            });
+            console.log(chalk.green('\n✓ Google Drive re-authorized successfully!\n'));
+            return;
+          } catch (error) {
+            console.log(chalk.red('\n❌ Re-authorization failed: ' + error.message + '\n'));
+          }
+          break;
+
+        case '3':
+          // Delete config
+          const confirmed = await promptConfirmDelete();
+          if (confirmed) {
+            const config = loadConfig();
+            if (config && config.googleDrive) {
+              delete config.googleDrive;
+              fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+              console.log(chalk.green('\n✓ Google Drive configuration deleted!\n'));
+              return;
+            }
+          } else {
+            console.log(chalk.gray('\n→ Deletion cancelled.\n'));
+          }
+          break;
+
+        case '4':
+          console.log(chalk.gray('\n→ Exiting configuration.\n'));
+          return;
+
+        default:
+          console.log(chalk.red('\n❌ Invalid option. Please select 1-4.\n'));
+      }
+    }
+  } else {
+    // New configuration
+    console.log(chalk.white.bold('\n🔧 Google Drive Setup\n'));
+    console.log(chalk.gray('You need to create OAuth 2.0 credentials in Google Cloud Console.'));
+    console.log(chalk.gray('Make sure to add ') + chalk.cyan('http://localhost:3000/callback') + chalk.gray(' as a redirect URI.\n'));
+
+    const clientId = await promptGoogleDriveClientId();
+    if (!clientId) {
+      console.log(chalk.red('\n❌ Client ID cannot be empty\n'));
+      return;
+    }
+
+    const clientSecret = await promptGoogleDriveClientSecret();
+    if (!clientSecret) {
+      console.log(chalk.red('\n❌ Client Secret cannot be empty\n'));
+      return;
+    }
+
+    try {
+      const tokens = await authenticateGoogleDrive(clientId, clientSecret);
+
+      saveConfig('googleDrive', {
+        clientId: clientId,
+        clientSecret: clientSecret,
+        refreshToken: tokens.refreshToken
+      });
+
+      console.log(chalk.green('\n✓ Google Drive configured successfully!\n'));
+      console.log(chalk.white('You can now upload files: ') + chalk.cyan('pld -s <file> gd\n'));
+    } catch (error) {
+      console.log(chalk.red('\n❌ Setup failed: ' + error.message + '\n'));
+    }
+  }
 }
 
 // ==================== HISTORY MANAGEMENT ====================
@@ -206,7 +489,14 @@ async function displayHistory() {
 
     for (let i = 0; i < displayLimit; i++) {
       const item = history[i];
-      const serviceLabel = item.service === 'gofile' ? chalk.magenta('[Gofile]') : chalk.green('[Pixeldrain]');
+      let serviceLabel;
+      if (item.service === 'gofile') {
+        serviceLabel = chalk.magenta('[Gofile]');
+      } else if (item.service === 'googledrive') {
+        serviceLabel = chalk.blue('[Google Drive]');
+      } else {
+        serviceLabel = chalk.green('[Pixeldrain]');
+      }
       console.log(chalk.cyan(`${i + 1}. `) + serviceLabel + ' ' + chalk.white.bold(item.filename));
       console.log(chalk.gray(`   Time: ${formatTimestamp(item.timestamp)}`));
       console.log(chalk.gray(`   Size: ${item.fileSize}`));
@@ -268,13 +558,15 @@ function promptServiceSelection() {
     console.log(chalk.white.bold('\n⚙️  Select Service to Configure\n'));
     console.log(chalk.cyan('1. ') + chalk.green('Pixeldrain'));
     console.log(chalk.cyan('2. ') + chalk.magenta('Gofile'));
-    console.log(chalk.cyan('3. ') + chalk.white('Exit\n'));
+    console.log(chalk.cyan('3. ') + chalk.blue('Google Drive'));
+    console.log(chalk.cyan('4. ') + chalk.white('Exit\n'));
 
-    rl.question(chalk.yellow('Select service (1-3): '), (answer) => {
+    rl.question(chalk.yellow('Select service (1-4): '), (answer) => {
       rl.close();
       const choice = answer.trim();
       if (choice === '1') resolve('pixeldrain');
       else if (choice === '2') resolve('gofile');
+      else if (choice === '3') resolve('googledrive');
       else resolve(null);
     });
   });
@@ -360,7 +652,14 @@ async function configureApiKey() {
     return;
   }
 
-  const apiKey = getServiceApiKey(service);
+  // Handle Google Drive separately
+  if (service === 'googledrive') {
+    await configureGoogleDrive();
+    return;
+  }
+
+  const credentials = getServiceCredentials(service);
+  const apiKey = credentials ? credentials.apiKey : null;
   const serviceName = service === 'pixeldrain' ? 'Pixeldrain' : 'Gofile';
 
   // If no API key exists, directly prompt for one
@@ -372,7 +671,7 @@ async function configureApiKey() {
       process.exit(1);
     }
 
-    saveConfig(service, newApiKey);
+    saveConfig(service, { apiKey: newApiKey });
     console.log(chalk.green(`\n✓ ${serviceName} API key saved successfully!\n`));
     console.log(chalk.white('You can now upload files: ') + chalk.cyan(`pld -s <file> ${service === 'gofile' ? 'gf' : 'pd'}\n`));
     return;
@@ -388,19 +687,19 @@ async function configureApiKey() {
         const maskedKey = apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4);
         console.log(chalk.white('\n🔑 Current API Key: ') + chalk.cyan(maskedKey));
         const config = loadConfig();
-        if (config.services[service].updatedAt) {
+        if (config.services && config.services[service] && config.services[service].updatedAt) {
           console.log(chalk.gray('Updated: ' + formatTimestamp(config.services[service].updatedAt) + '\n'));
         }
         break;
 
       case '2':
         // Change API key
-        const newApiKey = await promptApiKey(service);
-        if (!newApiKey) {
+        const newKey = await promptApiKey(service);
+        if (!newKey) {
           console.log(chalk.red('\n❌ API key cannot be empty\n'));
           break;
         }
-        saveConfig(service, newApiKey);
+        saveConfig(service, { apiKey: newKey });
         console.log(chalk.green('\n✓ API key updated successfully!\n'));
         return;
 
@@ -733,12 +1032,128 @@ async function uploadToGofile(filePath, token) {
   }
 }
 
+// Upload to Google Drive
+async function uploadToGoogleDrive(filePath) {
+  const spinner = ora();
+
+  try {
+    // Resolve absolute path
+    const absolutePath = path.resolve(filePath);
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      console.log(chalk.red(`❌ Error: File not found: ${filePath}`));
+      process.exit(1);
+    }
+
+    // Get file stats
+    const stats = fs.statSync(absolutePath);
+    const fileName = path.basename(absolutePath);
+    const fileSize = formatFileSize(stats.size);
+
+    console.log(chalk.blue('[Google Drive]') + chalk.white(` 📁 File: ${chalk.cyan(fileName)}`));
+    console.log(chalk.white(`📊 Size: ${chalk.cyan(fileSize)}\n`));
+
+    // Get OAuth2 client
+    const auth = await getGoogleDriveClient();
+    if (!auth) {
+      console.log(chalk.red('❌ Error: Google Drive not configured\n'));
+      console.log(chalk.white('Please configure Google Drive first: ') + chalk.cyan('pld --config\n'));
+      process.exit(1);
+    }
+
+    // Create Drive client
+    const drive = google.drive({ version: 'v3', auth });
+
+    // Start spinner
+    spinner.start(chalk.yellow('Uploading to Google Drive...'));
+
+    // Create file metadata
+    const fileMetadata = {
+      name: fileName
+    };
+
+    // Create media object
+    const media = {
+      mimeType: 'application/octet-stream',
+      body: fs.createReadStream(absolutePath)
+    };
+
+    // Upload file
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id, name, webViewLink, webContentLink'
+    });
+
+    // Set file to be publicly accessible
+    await drive.permissions.create({
+      fileId: response.data.id,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      }
+    });
+
+    // Get updated file info with sharing link
+    const file = await drive.files.get({
+      fileId: response.data.id,
+      fields: 'id, name, webViewLink, webContentLink'
+    });
+
+    spinner.succeed(chalk.green('Upload complete! ✨'));
+
+    const fileId = file.data.id;
+    const downloadLink = file.data.webViewLink || `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+
+    // Save to history
+    const historyEntry = {
+      service: 'googledrive',
+      timestamp: new Date().toISOString(),
+      filename: fileName,
+      fileSize: fileSize,
+      fileId: fileId,
+      downloadLink: downloadLink
+    };
+    saveHistory(historyEntry);
+
+    // Display results
+    console.log(chalk.green('\n✓ Upload Successful! 🎉\n'));
+
+    console.log(chalk.white('🔗 Share Link:'));
+    console.log(chalk.cyan.underline.bold(`   ${downloadLink}\n`));
+
+    // Copy to clipboard
+    try {
+      await clipboardy.write(downloadLink);
+      console.log(chalk.green('✓ Link copied to clipboard!\n'));
+    } catch (clipError) {
+      console.log(chalk.yellow('⚠ Could not copy to clipboard\n'));
+    }
+
+  } catch (error) {
+    spinner.fail(chalk.red('Upload failed!'));
+
+    if (error.code === 401 || error.code === 403) {
+      console.log(chalk.red('\n❌ Authentication Error'));
+      console.log(chalk.yellow('Please re-authorize Google Drive: ') + chalk.cyan('pld --config\n'));
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ENETUNREACH') {
+      console.log(chalk.red('\n❌ Network Error: Could not reach Google Drive'));
+      console.log(chalk.yellow('Please check your internet connection\n'));
+    } else {
+      console.log(chalk.red(`\n❌ Error: ${error.message}\n`));
+    }
+
+    process.exit(1);
+  }
+}
+
 // Main upload router
 async function uploadFile(filePath, serviceFlag) {
-  // Validate file path  
+  // Validate file path
   if (!filePath) {
     console.log(chalk.red('❌ Error: Please provide a file path'));
-    console.log(chalk.yellow('Usage: pld -s <file-path> [gf|pd]'));
+    console.log(chalk.yellow('Usage: pld -s <file-path> [gf|pd|gd]'));
     process.exit(1);
   }
 
@@ -748,10 +1163,19 @@ async function uploadFile(filePath, serviceFlag) {
     service = 'gofile';
   } else if (serviceFlag === 'pd') {
     service = 'pixeldrain';
+  } else if (serviceFlag === 'gd') {
+    service = 'googledrive';
+  }
+
+  // Handle Google Drive upload
+  if (service === 'googledrive') {
+    await uploadToGoogleDrive(filePath);
+    return;
   }
 
   // Check for API key
-  const apiKey = getServiceApiKey(service);
+  const credentials = getServiceCredentials(service);
+  const apiKey = credentials ? credentials.apiKey : null;
 
   // Pre-upload validation: Check file size for Pixeldrain
   if (service === 'pixeldrain') {
@@ -821,7 +1245,7 @@ program
 
 program
   .option('--config', 'Configure API keys')
-  .option('-s, --send <file> [service]', 'Upload a file (service: pd=Pixeldrain, gf=Gofile)')
+  .option('-s, --send <file> [service]', 'Upload a file (service: pd=Pixeldrain, gf=Gofile, gd=Google Drive)')
   .option('-ls, --list', 'Show upload history');
 
 program.parse(process.argv);
@@ -833,7 +1257,7 @@ if (options.config) {
   configureApiKey();
 } else if (options.send) {
   // Get service flag from additional args
-  const serviceFlag = program.args[0]; // Will be 'gf', 'pd', or undefined
+  const serviceFlag = program.args[0]; // Will be 'gf', 'pd', 'gd', or undefined
   uploadFile(options.send, serviceFlag);
 } else if (options.list) {
   displayHistory();
@@ -847,19 +1271,20 @@ if (options.config) {
   console.log(chalk.cyan('  ██║     ███████╗██████╔╝    ╚██████╗███████╗██║'));
   console.log(chalk.cyan('  ╚═╝     ╚══════╝╚═════╝      ╚═════╝╚══════╝╚═╝'));
   console.log('\n');
-  console.log(chalk.white('  Version: ') + chalk.green('1.0.0'));
+  console.log(chalk.white('  Version: ') + chalk.green('1.0.1'));
   console.log(chalk.white('  Author: ') + chalk.yellow('laiduc1312'));
   console.log('\n');
   console.log(chalk.white('  📡 Supported Services:'));
   console.log(chalk.magenta('    • Gofile ') + chalk.gray('(Default, Anonymous, API Key)'));
   console.log(chalk.green('    • Pixeldrain ') + chalk.gray('(Requires API Key, Free: 10GB limit, limit speed upload)'));
+  console.log(chalk.blue('    • Google Drive ') + chalk.gray('(Requires OAuth setup, 15GB free storage)'));
   console.log('\n');
   console.log(chalk.white('  Quick Start:'));
   console.log(chalk.cyan('    pld -s <file> gf    ') + chalk.gray('Upload to Gofile'));
   console.log(chalk.cyan('    pld -s <file> pd    ') + chalk.gray('Upload to Pixeldrain'));
+  console.log(chalk.cyan('    pld -s <file> gd    ') + chalk.gray('Upload to Google Drive'));
   console.log(chalk.cyan('    pld -ls             ') + chalk.gray('Show history'));
   console.log(chalk.cyan('    pld --config        ') + chalk.gray('Configure API keys'));
   console.log(chalk.cyan('    pld -h              ') + chalk.gray('Show help'));
   console.log('\n');
 }
-

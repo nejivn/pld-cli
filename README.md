@@ -33,6 +33,7 @@ Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 
 **Then install PLD CLI:**
 ```powershell
+scoop bucket add pld-bucket https://github.com/laiduc1312209/scoop-bucket
 scoop install pld-cli
 ```
 

@@ -10,16 +10,18 @@ Write-Host "📤 Installing PLD CLI..." -ForegroundColor Cyan
 Write-Host "Fetching latest version..." -ForegroundColor Yellow
 try {
     $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/laiduc1312209/pld-cli/releases/latest" -Headers @{ "User-Agent" = "pld-cli-installer" }
-    $version = $latestRelease.tag_name -replace '^v', ''
+    $tagName = $latestRelease.tag_name
+    $version = $tagName -replace '^v', ''
     Write-Host "Latest version: v$version" -ForegroundColor Green
 }
 catch {
     Write-Host "⚠️  Could not fetch latest version, using default..." -ForegroundColor Yellow
+    $tagName = "v1.0.2"
     $version = "1.0.2"
 }
 
 $installDir = "$env:LOCALAPPDATA\pld-cli"
-$zipUrl = "https://github.com/laiduc1312209/pld-cli/archive/refs/tags/v$version.zip"
+$zipUrl = "https://github.com/laiduc1312209/pld-cli/archive/refs/tags/$tagName.zip"
 $tempZip = "$env:TEMP\pld-cli.zip"
 
 # Check Node.js
@@ -40,7 +42,7 @@ if (Test-Path $installDir) {
     Remove-Item $installDir -Recurse -Force
 }
 Expand-Archive -Path $tempZip -DestinationPath "$env:TEMP\pld-cli-temp" -Force
-Move-Item "$env:TEMP\pld-cli-temp\pld-cli-$version" $installDir -Force
+Move-Item "$env:TEMP\pld-cli-temp\pld-cli-$tagName" $installDir -Force
 Remove-Item "$env:TEMP\pld-cli-temp" -Recurse -Force
 Remove-Item $tempZip -Force
 

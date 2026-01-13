@@ -1,21 +1,21 @@
-# 📤 PLD CLI - File Sharing Tool
+# PLD CLI - File Sharing Tool
 
 A beautiful and professional command-line tool for uploading and sharing files instantly using Pixeldrain, Gofile, and Google Drive. Features a gorgeous terminal UI with colors, loading animations, automatic clipboard integration, upload history tracking, and secure API key management.
 
-## ✨ Features
+## Features
 
-- 🚀 **Lightning Fast** - Upload files instantly with streaming support for large files
-- 🎨 **Beautiful Terminal UI** - Gorgeous interface with colors, animations, and smooth progress indicators
-- 📱 **QR Code Display** - Automatic QR code generation for easy mobile sharing
-- 📋 **Auto Clipboard** - Download links automatically copied to your clipboard
-- 🔄 **Auto-Update** - Automatically checks and updates to the latest version
-- 📊 **Upload History** - Track all your uploads with timestamps and file info
-- 🔐 **Secure & Private** - API keys stored locally and encrypted. All uploads use HTTPS
-- 💾 **Memory Efficient** - Handles files of any size without consuming excessive memory
-- 🔄 **Multi Service Support** - Choose between Gofile, Pixeldrain, and Google Drive for uploads
-- 💻 **Open Source** - Free and open-source software on GitHub
+- **Lightning Fast** - Upload files instantly with streaming support for large files
+- **Beautiful Terminal UI** - Gorgeous interface with colors, animations, and smooth progress indicators
+- **QR Code Display** - Automatic QR code generation for easy mobile sharing
+- **Auto Clipboard** - Download links automatically copied to your clipboard
+- **Auto-Update** - Automatically checks and updates to the latest version
+- **Upload History** - Track all your uploads with timestamps and file info
+- **Secure & Private** - API keys stored locally and encrypted. All uploads use HTTPS
+- **Memory Efficient** - Handles files of any size without consuming excessive memory
+- **Multi Service Support** - Choose between Gofile, Pixeldrain, and Google Drive for uploads
+- **Open Source** - Free and open-source software on GitHub
 
-## 📦 Installation
+## Installation
 
 
 ### Irm
@@ -60,7 +60,7 @@ npm install
 npm link
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Step 1: Configure API Key
 
@@ -93,7 +93,7 @@ Upload a file to Google Drive:
 pld -s video.mp4 gd
 ```
 
-## 📖 Usage
+## Usage
 
 ### Available Commands
 
@@ -138,7 +138,7 @@ pld -s video.mp4 gd
 pld -ls
 ```
 
-## 🔷 Google Drive Setup
+## Google Drive Setup
 
 To use Google Drive, you need to create OAuth 2.0 credentials:
 
@@ -173,7 +173,7 @@ After authorization, you can upload files to Google Drive using:
 pld -s <file> gd
 ```
 
-## 📡 Supported Services
+## Supported Services
 
 | Service | Flag | API Key Required | Notes |
 |---------|------|------------------|-------|
@@ -181,7 +181,7 @@ pld -s <file> gd
 | Pixeldrain | `pd` | Required | Free tier: 10GB limit, limited upload speed |
 | Google Drive | `gd` | OAuth Required | 15GB free storage |
 
-## 🗂️ File Structure
+## File Structure
 
 The tool creates a `.pld` directory in your home folder to store configuration and history:
 
@@ -191,7 +191,7 @@ The tool creates a `.pld` directory in your home folder to store configuration a
 └── history.json   # Upload history (last 50 uploads)
 ```
 
-## 🛠️ Technical Details
+## Technical Details
 
 ### Dependencies
 
@@ -212,7 +212,7 @@ The tool creates a `.pld` directory in your home folder to store configuration a
 - All uploads are encrypted in transit (HTTPS)
 - Google Drive uses OAuth 2.0 with refresh tokens
 
-## 📝 Features in Detail
+## Features in Detail
 
 ### Upload History
 
@@ -264,7 +264,7 @@ PLD CLI automatically checks for updates once per day when you run any command. 
 
 No manual update needed - you'll always have the latest features and bug fixes!
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Command not found after installation
 
@@ -310,7 +310,7 @@ If you encounter authorization errors:
 - Use absolute paths for files outside the current directory
 - Ensure the file exists and is readable
 
-## 🎯 Roadmap
+## Roadmap
 
 Future features planned:
 - [ ] Multiple file upload support
@@ -321,11 +321,11 @@ Future features planned:
 - [ ] Export history to CSV
 - [x] Support for more file sharing services (Google Drive)
 
-## 📄 License
+## License
 
 MIT
 
-## 🔗 Links
+## Links
 
 - **GitHub**: [github.com/laiduc1312209/pld-cli](https://github.com/laiduc1312209/pld-cli)
 - **Gofile**: [gofile.io](https://gofile.io)
@@ -334,6 +334,6 @@ MIT
 
 ---
 
-Made with ❤️ for easy file sharing
+Made with love for easy file sharing
 
 **Get Started:** `pld --config`
